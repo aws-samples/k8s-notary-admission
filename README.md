@@ -49,7 +49,7 @@ During the startup of this controller, the init container calls the Notation CLI
                     └── signer-pre-prod-root.pem
 ```
 
-The [Trust Policy](https://github.com/notaryproject/notaryproject/blob/main/specs/trust-store-trust-policy.md), seen in the above tree output, is configured via the `trustpolicy.json` file in the root of the `notary-admisson` Helm chart. It is created init container. An example of this Trust Policy is seen below.
+The [Trust Policy](https://github.com/notaryproject/notaryproject/blob/main/specs/trust-store-trust-policy.md), seen in the above tree output, is configured via the `trustpolicy.json` file in the root of the `notary-admisson` Helm chart. It is created by the init container. An example of this Trust Policy is seen below.
 
 ```json
 {
