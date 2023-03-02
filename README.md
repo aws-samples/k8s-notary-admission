@@ -1,6 +1,6 @@
 # K8s Notary Admission
 
-> This solution is a non-production example, and is __NOT SUPPORTED FOR PRODUCTION USE__. It is tested to work in a single AWS account with multiple Amazon ECR regions. Cross-account access has not yet be explored.
+> This solution is a non-production example, and is __NOT SUPPORTED FOR PRODUCTION USE__. It is tested to work in a single AWS account with multiple Amazon ECR regions. Cross-account access has not yet been explored.
 
 This project is a non-production example of how to use the [Notation CLI](https://github.com/notaryproject/notation) with [AWS Signer](https://docs.aws.amazon.com/signer/latest/developerguide/Welcome.html) to verify container image signatures for container images stored in private Amazon ECR registries. This project uses a custom [Dynamic Admission Controller](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/) to verify container images.
 
