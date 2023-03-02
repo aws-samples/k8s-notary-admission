@@ -20,7 +20,7 @@ deployment.apps/test-bad created
 
 kubectl -n admission-test get deployment test-bad -o=jsonpath='{.status}'
 ...
-{"lastTransitionTime":"2023-02-16T23:56:47Z","lastUpdateTime":"2023-02-16T23:56:47Z","message":"admission webhook \"pods.notary-admission.aws.com\" denied the request: 207726343182.dkr.ecr.us-west-2.amazonaws.com/pause:3.9 image, in test-bad-649c9dfdb9-99nch pod, in admission-test namespace, failed signature validation","reason":"FailedCreate","status":"True","type":"ReplicaFailure"}],"observedGeneration":1,"unavailableReplicas":1}
+{"lastTransitionTime":"2023-02-16T23:56:47Z","lastUpdateTime":"2023-02-16T23:56:47Z","message":"admission webhook \"pods.notary-admission.aws.com\" denied the request: <ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/pause:3.9 image, in test-bad-649c9dfdb9-99nch pod, in admission-test namespace, failed signature validation","reason":"FailedCreate","status":"True","type":"ReplicaFailure"}],"observedGeneration":1,"unavailableReplicas":1}
 ...
 ```
 
