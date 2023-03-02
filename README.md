@@ -188,7 +188,7 @@ aws signer put-signing-profile \
 {
     "arn": "arn:aws:signer:<AWS_REGION>:<AWS_ACCOUNT_ID>:/signing-profiles/<SIGNING_PROFILE_NAME>",
     "profileVersion": "<VERSION>",
-    "profileVersionArn": "arn:aws:signer:<AWS_REGION>:<AWS_ACCOUNT_ID>:/signing-profiles/<SIGNING_PROFILE_NAME>/w10OlsQ2Oe"
+    "profileVersionArn": "arn:aws:signer:<AWS_REGION>:<AWS_ACCOUNT_ID>:/signing-profiles/<SIGNING_PROFILE_NAME>/<VERSION>"
 }
 ```
 
