@@ -1,0 +1,35 @@
+kind: ValidatingWebhookConfiguration
+apiVersion: admissionregistration.k8s.io/v1
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ template "notary-admission.name" . }}
+    chart: {{ template "notary-admission.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    billing: {{ .Values.labels.billing }}
+    env: {{ .Values.labels.env }}
+    owner: {{ .Values.labels.owner }}
+webhooks:
+  - name: pods.{{ .Chart.Name }}.aws.com
+    failurePolicy: {{ .Values.admission.failurePolicy }}
+    namespaceSelector:
+      matchExpressions:
+      - key: "{{ .Chart.Name }}-ignore"
+        operator: NotIn
+        values:
+        - ignore
+    rules:
+      - operations: ["CREATE", "UPDATE"]
+        apiGroups: ["*"]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    clientConfig:
+      caBundle: {{ .Values.server.tls.secrets.cabundle }}
+      service:
+        namespace: {{ .Chart.Name }}
+        name: {{ .Chart.Name }}
+        path: {{ .Values.server.endpoints.podValidation }}
+        port: {{ .Values.service.ports.https }}
+    admissionReviewVersions: ["v1"]
+    sideEffects: None

@@ -1,0 +1,143 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Chart.Name }}
+  labels:
+    app: {{ template "notary-admission.name" . }}
+    chart: {{ template "notary-admission.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    billing: {{ .Values.labels.billing }}
+    env: {{ .Values.labels.env }}
+    owner: {{ .Values.labels.owner }}
+  annotations:
+    prometheus.io/path: {{ .Values.server.endpoints.metrics }}
+    prometheus.io/port: "{{ .Values.server.ports.http }}"
+    prometheus.io/scrape: "{{ .Values.prometheus.scrape }}"
+spec:
+  replicas: {{ .Values.deployment.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+      name: {{ .Chart.Name }}
+    spec:
+      serviceAccount: {{ .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      initContainers:
+      - name: "{{ .Chart.Name }}-init"
+        image: {{ .Values.deployment.initImage }}
+        imagePullPolicy: {{ .Values.deployment.pullPolicy }}
+        args:
+          - "--file=/config/server-config.yaml"
+          - "--trustPolicyFile=/config/trustpolicy.json"
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name     
+        command:
+        - /main
+        volumeMounts:
+          - name: "{{ .Chart.Name }}-config"
+            mountPath: /config
+          - name: verify
+            mountPath: /verify
+        securityContext:  
+          {{- toYaml .Values.deployment.securityContext | nindent 10 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: {{ .Values.deployment.serverImage }}
+        imagePullPolicy: {{ .Values.deployment.pullPolicy }}
+        args:
+          - "--file=/config/server-config.yaml"
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+{{- if and .Values.ecr.auth.apiOverride.endpoint .Values.ecr.auth.apiOverride.partition .Values.ecr.auth.apiOverride.region }}
+        - name: AWS_API_OVERRIDE_ENDPOINT
+          value: {{ .Values.ecr.auth.apiOverride.endpoint }}
+        - name: AWS_API_OVERRIDE_PARTITION
+          value: {{ .Values.ecr.auth.apiOverride.partition }}
+        - name: AWS_API_OVERRIDE_REGION
+          value: {{ .Values.ecr.auth.apiOverride.region }}
+{{- end }}      
+        command:
+        - /main
+        volumeMounts:
+          - name: "{{ .Chart.Name }}-config"
+            mountPath: /config
+          - name: "{{ .Chart.Name }}-certs"
+            mountPath: /certs
+          - name: verify
+            mountPath: /verify
+        readinessProbe:
+          {{- toYaml .Values.deployment.readiness | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.deployment.liveness | nindent 10 }}
+        resources:
+          {{- toYaml .Values.deployment.resources | nindent 10 }}
+        securityContext:  
+          {{- toYaml .Values.deployment.securityContext | nindent 10 }}
+      volumes:
+        - name: "{{ .Chart.Name }}-config"
+          configMap:
+            name: {{ .Chart.Name }}
+        - name: "{{ .Chart.Name }}-certs"
+          secret:
+            secretName: {{ .Chart.Name }}
+        - name: verify
+          emptyDir: {}
+---
+{{- if .Values.server.enableNetworkPolicies }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: {{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+    billing: {{ .Values.labels.billing }}
+    env: {{ .Values.labels.env }}
+    owner: {{ .Values.labels.owner }}
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: {{ .Chart.Name }}-allow-port-http-https
+  namespace: {{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+    billing: {{ .Values.labels.billing }}
+    env: {{ .Values.labels.env }}
+    owner: {{ .Values.labels.owner }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  ingress:
+  - ports:
+    - protocol: TCP
+      port: {{ .Values.server.ports.http }}
+    - protocol: TCP
+      port: {{ .Values.server.ports.https }}
+{{- end }}

@@ -1,0 +1,127 @@
+deployment:
+  initImage: <ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/notary-admission-init:<TAG>
+  serverImage: <ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/notary-admission:<TAG>
+  pullPolicy: Always
+  resources:
+    limits:
+      cpu: 0.5
+      memory: 512Mi
+    requests:
+      cpu: 0.5
+      memory: 512Mi
+  replicas: 3
+  readiness:
+    httpGet:
+      path: /healthz
+      scheme: HTTP
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  liveness:
+    httpGet:
+      path: /healthz
+      scheme: HTTP
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  securityContext:  
+    allowPrivilegeEscalation: false  
+    runAsUser: 1000  
+    readOnlyRootFilesystem: false
+    runAsNonRoot: true
+    capabilities:
+      drop: ["ALL"]  
+    seccompProfile:
+      type: "RuntimeDefault"
+
+labels:
+  billing: lob-cc
+  env: dev
+  owner: jimmy
+
+service:
+  ports:
+    http: 80
+    https: 443
+
+server:
+  address:
+  log:
+    encoding: console
+    level: debug
+  ports:
+    http: 8080
+    https: 8443
+  tls:
+    secrets:
+      crtFile: "/certs/tls.crt"
+      keyFile: "/certs/tls.key"
+      cabundle: 
+      crt:
+      key:
+  enableNetworkPolicies: true
+  endpoints:
+    metrics: "/metrics"
+    health: "/healthz"
+    podValidation: "/validate/pods"
+
+serviceAccount:
+  name: notary-admission
+  create: false
+  awsRoleArn: ""
+
+notation:
+  mode: binary 
+  debug:
+    enabled: false
+    flag: "--debug"
+  paths:
+    binaryDir: "./verify/bin"
+    binarySrc: "./notation"  # changes to this require changes in the image
+    binaryDst: "./verify/bin/notation"
+    plugins:
+      signerPluginDir: "/verify/notation/plugins/com.amazonaws.signer.notation.plugin"
+      signerPluginFile: "notation-com.amazonaws.signer.notation.plugin"
+    homeDirectory: "/verify/notation"
+    xdgHomeValue: "/verify"
+    xdgHomeVariable: "XDG_CONFIG_HOME"
+  commands:
+    version: version
+    login: login
+    verify: verify
+    list: list
+  trust:
+    policy:
+      name: aws-signer-tp
+      file: "trustpolicy.json"
+      aws:
+        signer:
+          profileArns: ["arn:aws:signer:<REGION>:<ACCOUNT>:/signing-profiles/notary_admission"]
+          debugEnabled: false
+          endpoint: 
+    store:
+      name: aws-signer-ts
+      signingAuthorities: ["signingAuthority:aws-signer-ts"]
+      rootCert: "/signer/signer-pre-prod-root.pem"
+
+prometheus:
+  name: notary_admission
+  start: 0
+  width: 5
+  count: 20
+  scrape: true
+
+ecr:
+  auth:
+    apiOverride:
+      endpoint:
+      partition:
+      region:
+    credentialCache:
+      enabled: true
+      preAuthRegistries: ["<ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com","<ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com"]
+      cacheRefreshInterval: 300
+      cacheTimeoutInterval: 600
+
+admission:
+  failurePolicy: Fail

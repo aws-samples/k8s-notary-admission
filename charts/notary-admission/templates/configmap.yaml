@@ -1,0 +1,66 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Chart.Name }}
+  labels:
+    app: {{ template "notary-admission.name" . }}
+    chart: {{ template "notary-admission.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    billing: {{ .Values.labels.billing }}
+    env: {{ .Values.labels.env }}
+    owner: {{ .Values.labels.owner }}
+data:
+  server-config.yaml: |
+    name: "{{ .Chart.Name }}"
+    log: 
+      encoding: "{{ .Values.server.log.encoding }}"
+      level: "{{ .Values.server.log.level }}"
+    network:
+      serverAddress: "{{ .Values.server.address }}"
+      ports:
+        http: "{{ .Values.server.ports.http }}"
+        https: "{{ .Values.server.ports.https }}"
+      endpoints: 
+        metrics: "{{ .Values.server.endpoints.metrics }}"  
+        health: "{{ .Values.server.endpoints.health }}"
+        podValidation: "{{ .Values.server.endpoints.podValidation }}"
+      tls:
+        keyFile: "{{ .Values.server.tls.secrets.keyFile }}"
+        crtFile: "{{ .Values.server.tls.secrets.crtFile }}"
+    ecr:
+      credentialCache:
+        enabled: {{ .Values.ecr.auth.credentialCache.enabled }}
+        preAuthRegistries: {{ toYaml .Values.ecr.auth.credentialCache.preAuthRegistries | nindent 10 }}
+        cacheRefreshInterval: {{ .Values.ecr.auth.credentialCache.cacheRefreshInterval }}
+        cacheTimeoutInterval: {{ .Values.ecr.auth.credentialCache.cacheTimeoutInterval }}
+    notation:
+      mode: {{ .Values.notation.mode }}
+      debugEnabled: {{ .Values.notation.debug.enabled }}
+      debugFlag: "{{ .Values.notation.debug.flag }}"
+      binaryDir: "{{ .Values.notation.paths.binaryDir }}"
+      binarySrc: "{{ .Values.notation.paths.binarySrc }}"
+      binaryDst: "{{ .Values.notation.paths.binaryDst }}"
+      cmdVersion: "{{ .Values.notation.commands.version }}"
+      cmdLogin: "{{ .Values.notation.commands.login }}"
+      cmdVerify: "{{ .Values.notation.commands.verify }}"
+      cmdList: "{{ .Values.notation.commands.list }}"
+      homeDirectory: "{{ .Values.notation.paths.homeDirectory }}"
+      trustPolicy: "{{ .Values.notation.trust.policy.file }}"
+      trustStore: "{{ .Values.notation.trust.store.name }}"
+      rootCert: "{{ .Values.notation.trust.store.rootCert }}"
+      xdgHomeVariable: "{{ .Values.notation.paths.xdgHomeVariable }}"
+      xdgHomeValue: "{{ .Values.notation.paths.xdgHomeValue }}"
+      pluginDir: "{{ .Values.notation.paths.plugins.signerPluginDir }}"
+      pluginFile: "{{ .Values.notation.paths.plugins.signerPluginFile }}"
+      signerDebug: {{ .Values.notation.trust.policy.aws.signer.debugEnabled }}
+      signerEndpoint: "{{ .Values.notation.trust.policy.aws.signer.endpoint }}"
+    prometheus:
+      name: {{ .Values.prometheus.name }}
+      start: {{ .Values.prometheus.start }}
+      width: {{ .Values.prometheus.width }}
+      count: {{ .Values.prometheus.count }}
+  trustpolicy.json: |
+{{ .Files.Get "trustpolicy.json" | indent 4 }}
+

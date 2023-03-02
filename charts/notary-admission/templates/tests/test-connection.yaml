@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Chart.Name }}-test-connection"
+  namespace: {{ .Chart.Name }}
+  labels:
+    app: {{ template "notary-admission.name" . }}
+    chart: {{ template "notary-admission.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    billing: {{ .Values.labels.billing }}
+    env: {{ .Values.labels.env }}
+    owner: {{ .Values.labels.owner }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['-S', '--spider', '{{ .Chart.Name }}/healthz']
+  restartPolicy: Never

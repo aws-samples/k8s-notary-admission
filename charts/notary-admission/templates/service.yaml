@@ -1,0 +1,21 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Chart.Name }}
+  labels:
+    app: {{ template "notary-admission.name" . }}
+    chart: {{ template "notary-admission.chart" . }}
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    billing: {{ .Values.labels.billing }}
+    env: {{ .Values.labels.env }}
+    owner: {{ .Values.labels.owner }}
+spec:
+  selector:
+    app: {{ .Chart.Name }}
+  ports:
+  - name: https
+    protocol: TCP
+    port: {{ .Values.service.port }}
+    targetPort: {{ .Values.server.port }}

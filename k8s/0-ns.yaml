@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: notary-admission
+  labels:
+    # pod-security.kubernetes.io/audit: restricted
+    # pod-security.kubernetes.io/enforce: restricted
+    # pod-security.kubernetes.io/warn: restricted
+    app: notary-admission
+    billing: lob-cc
+    env: dev
+    owner: someone
+    notary-admission-ignore: ignore
