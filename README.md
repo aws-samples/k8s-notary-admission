@@ -187,7 +187,7 @@ aws signer put-signing-profile \
     --signature-validity-period 'value=12, type=MONTHS'
 {
     "arn": "arn:aws:signer:<AWS_REGION>:<AWS_ACCOUNT_ID>:/signing-profiles/<SIGNING_PROFILE_NAME>",
-    "profileVersion": "w10OlsQ2Oe",
+    "profileVersion": "<VERSION>",
     "profileVersionArn": "arn:aws:signer:<AWS_REGION>:<AWS_ACCOUNT_ID>:/signing-profiles/<SIGNING_PROFILE_NAME>/w10OlsQ2Oe"
 }
 ```
