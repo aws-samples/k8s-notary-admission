@@ -14,17 +14,21 @@ RUN wget -O ${NOTATION_FILE}.tar.gz ${NOTATION_LINK} \
  && tar -xzf ${NOTATION_FILE}.tar.gz \
  && rm ${NOTATION_FILE}.tar.gz
 
+# Get Signer plugin binary
+ARG SIGNER_BINARY_LINK="http://10.0.2.2:8080/files/signer/plugins/notation-com.amazonaws.signer.notation.plugin_linux_amd64"
+ARG SIGNER_BINARY_FILE="notation-com.amazonaws.signer.notation.plugin_linux_amd64"
+RUN wget -O ${SIGNER_BINARY_FILE} ${SIGNER_BINARY_LINK}
+
+# Get Signer cert
+ARG SIGNER_CERT_LINK="http://10.0.2.2:8080/files/signer/signer-pre-prod-root.pem"
+ARG SIGNER_CERT_FILE="signer-pre-prod-root.pem"
+RUN wget -O ${SIGNER_CERT_FILE} ${SIGNER_CERT_LINK}
+
 # Disable default GOPROXY
 RUN go env -w GOPROXY=direct
 # Build Go binary
 RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o main ./cmd/init/main.go
 
-# FROM $BASE_IMAGE
-# FROM alpine:3.17.1
-# RUN apk add gcompat tree
-# FROM gcr.io/distroless/static-debian11
-# FROM public.ecr.aws/amazonlinux/amazonlinux:2022
-# FROM 207726343182.dkr.ecr.us-east-2.amazonaws.com/amazon-linux:2022
 FROM amd64/amazonlinux:2.0.20230207.0
 RUN yum install tree -y
 WORKDIR /
@@ -32,12 +36,8 @@ WORKDIR /
 # Notation home
 ENV XDG_CONFIG_HOME=/verify
 
-# COPY --from=builder /usr/local/aws /usr/local/aws
-# COPY --from=builder /usr/local/bin/aws /usr/local/bin/aws
-# COPY --from=builder notation/notation_1.0.0-rc.1.dev.20230201_linux_amd64 notation
-# COPY notation/notation.bin notation
 COPY --from=builder notation notation
-COPY signer/signer-pre-prod-root.pem signer/signer-pre-prod-root.pem
-COPY plugins/notation-com.amazonaws.signer.notation.plugin_linux_amd64 signer/notation-com.amazonaws.signer.notation.plugin
+COPY --from=builder signer-pre-prod-root.pem signer/signer-pre-prod-root.pem
+COPY --from=builder notation-com.amazonaws.signer.notation.plugin_linux_amd64 signer/notation-com.amazonaws.signer.notation.plugin
 COPY --from=builder main main
 ENTRYPOINT ["/main"]
