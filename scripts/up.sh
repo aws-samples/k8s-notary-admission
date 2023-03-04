@@ -47,6 +47,5 @@ fi
 
 read -p "Do you wish to run post install test? " yn
 case $yn in
-    # [Yy]* ) ${KUBECTL} apply -f k8s/0-ns.yaml
     [Yy]* ) helm test notary-admission
 esac
