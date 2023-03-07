@@ -203,7 +203,7 @@ aws signer put-signing-profile \
 ```bash
 notation key add \
     --id arn:aws:signer:<AWS_REGION>:<AWS_ACCOUNT_ID>:/signing-profiles/<SIGNING_PROFILE_NAME> \
-    --plugin com.amazonaws.signer.notation.plugin \
+    --plugin com.amazonaws.signer.notation.plugin --signature-manifest image \
     <SIGNING_KEY_NAME>
 <SIGNING_KEY_NAME>
 ```
