@@ -203,7 +203,7 @@ aws signer put-signing-profile \
 ```bash
 notation key add \
     --id arn:aws:signer:<AWS_REGION>:<AWS_ACCOUNT_ID>:/signing-profiles/<SIGNING_PROFILE_NAME> \
-    --plugin com.amazonaws.signer.notation.plugin --signature-manifest image \
+    --plugin com.amazonaws.signer.notation.plugin \
     <SIGNING_KEY_NAME>
 <SIGNING_KEY_NAME>
 ```
@@ -219,7 +219,7 @@ notation certificate add --type signingAuthority --store aws-signer-ts signer-pr
 ```bash
 notation sign \
     <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/<IMAGE_REPOSITORY>:<IMAGE_TAG> \
-    --key <SIGNING_KEY_NAME>
+    --key <SIGNING_KEY_NAME> --signature-manifest image
 ```
 
 6. Verify a signed image
