@@ -13,18 +13,10 @@ The approaches used in this project are inspired by the following OSS projects:
 
 The solution centers around a custom controller that is written in Go and installed via Helm. The default configuration installs the Validating Webhook Configuration that will forward API server validation calls for all Pod _CREATE_ and _UPDATE_ operations, from any namespace not labeled with the `notary-admission-ignore=ignore` label.
 
-> The current implementation of his solution only validates Pods, and does not act on workloads (Deployment, DaemonSet, etc.) that create pods. While this solution will prevent Pods from being created if their relevant images fail signature verification, it will not prevent the associated workload resources from being created. For example, a Deployment that results in failed validation of Pods, will still be created successfully. The Deployment status can be checked for failed Pods.
-
-```
-deployment.apps/test-bad created
-
-kubectl -n admission-test get deployment test-bad -o=jsonpath='{.status}'
-...
-{"lastTransitionTime":"2023-02-16T23:56:47Z","lastUpdateTime":"2023-02-16T23:56:47Z","message":"admission webhook \"pods.notary-admission.aws.com\" denied the request: <ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/pause:3.9 image, in test-bad-649c9dfdb9-99nch pod, in admission-test namespace, failed signature validation","reason":"FailedCreate","status":"True","type":"ReplicaFailure"}],"observedGeneration":1,"unavailableReplicas":1}
-...
-```
+> The current implementation of his solution validates Pods and Deployments, but does not act on other workloads (DaemonSet, Jobs, etc.) that create pods. The code to handle other workloads can be enabled in this [file](./pkg/admissioncontroller/workloads/workloads.go).
 
 ## Operation
+
 This example solution uses the Notation CLI to verify container image signatures of container images stored in Amazon ECR. This solution is compatible with the [OCI 1.0 Image Format Specification](https://github.com/opencontainers/image-spec). The Notation CLI uses an AWS Signer plugin to verify image signatures against signing keys and certificates, while simultaneously checking for revoked keys.
 
 The container image built with this solution includes the following Notation and AWS Signer artifacts for operation:
@@ -103,7 +95,7 @@ To log the revocation check without using it as a verification gate, the followi
 
 ### Amazon ECR AuthN/AuthZ
 
-K8s Notary Admission uses [IAM Roles for Service Accounts (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) and the [AWS SDK for Go v2](https://github.com/aws/aws-sdk-go-v2) to retrieve Amazon ECR auth tokens. These auth tokens contain the credentials (username and password) needed to perform reads (pulls) from Amazon ECR using the Notation CLI. By default, The AuthN/AuthZ process uses the AWS partition, region, and endpoint relative to the underlying Amazon EKS cluster. This can be overridden by supplying override values in the _charts/notary-admission/values.yaml_ file. 
+K8s Notary Admission uses [IAM Roles for Service Accounts (IRSA)](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) and the [AWS SDK for Go v2](https://github.com/aws/aws-sdk-go-v2) to retrieve Amazon ECR auth tokens. These auth tokens contain the basic auth credentials (username and password) needed to perform reads (pulls) from Amazon ECR using the Notation CLI. By default, The AuthN/AuthZ process uses the AWS partition, region, and endpoint relative to the underlying Amazon EKS cluster. This can be overridden by supplying override values in the _charts/notary-admission/values.yaml_ file. 
 
 It is important to understand that Amazon ECR credentials are region-specific. So, the K8s Notary Admission will need credentials for each Amazon ECR region, from where images will be verified. Amazon ECR credentials will be obtained and cached for 12 hours, if the credential cache is enabled in the Helm values file.
 
@@ -301,9 +293,9 @@ Update Kubernetes test manifests with your images, then run the tests.
 ## Scale Testing
 The purpose of scale testing was to ensure that Amazon EKS cluster operations were not negatively impacted by the K8s Notary Admission controller. The test was designed to validate 1000 pods, provisioned by a single Deployment. The execution time measured was the time between when the Deployment resource was applied to the cluster and when 1000 pods were scheduled.
 
-The K8s Notary Admission controller was tested in an Amazon EKS v1.24 cluster, with controller replicas set to 1, 3, and 5. The cluster was setup to run across 3 AWS Availability Zones, using 2 managed nodegroups. 
+The K8s Notary Admission controller was tested in an Amazon EKS v1.24 cluster, with controller replicas set to 1, 3, and 5. The cluster was setup to run across 3 AWS Availability Zones, using 2 managed node groups. 
 
-The size of the nodes were chosen to accommodate the resource (CPU and Memory) requirements for 1, 3, and 5 controller replicas, as well as the 1000 test pods, provisioned via a separate Deployment. The webhook failurePolicy was set to `Fail`, to ensure that no pods were created without successful validation.
+The size of the nodes were chosen to accommodate the resource (CPU and Memory) requirements for 1, 3, and 5 controller replicas, as well as the 1000 test pods, provisioned via a separate Deployment. The webhook _failurePolicy_ was set to `Fail`, to ensure that no pods were created without successful validation.
 
 During testing, the K8s Notary Admission controller logs were monitored, in debug mode, as well as the test Deployment status field.
 
@@ -338,7 +330,7 @@ The tests were setup to validate 1000 pods. As a point of reference, without val
 
 #### Test Summary
 
-The test results indicated that with at least 3 replicas there was no appreciable negative impact to the Amazon EKS cluster operations. However, with 1 replica and increased resources, all pods were validated, but at twice the normal operation time. For this reason, running with 1 controller replica is NOT recommended in clusters that experience high rates on change.
+The test results indicated that with at least 3 replicas there was no appreciable negative impact to the Amazon EKS cluster operations. However, with 1 replica and increased resources, all pods were validated, but at twice the normal operation time. For this reason, running with 1 controller replica is NOT recommended in clusters that experience high rates of change.
 
 Additional tests of the controller, with 1 replica and resource settings reduced to those for multiple replicas, resulted in severe impact to cluster operations. This was caused by multiple controller pod restarts, attributed to OOM issues. So, it is recommended that the K8s Notary Admission controller be operated with at least 3 replicas, with at least the resource requests and limits defined in the above testing, if like workloads are to be tested in cluster with a high rate of change.
 
