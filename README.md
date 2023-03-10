@@ -13,7 +13,7 @@ The approaches used in this project are inspired by the following OSS projects:
 
 The solution centers around a custom controller that is written in Go and installed via Helm. The default configuration installs the Validating Webhook Configuration that will forward API server validation calls for all Pod _CREATE_ and _UPDATE_ operations, from any namespace not labeled with the `notary-admission-ignore=ignore` label.
 
-> The current implementation of his solution validates Pods and Deployments, but does not act on other workloads (DaemonSet, Jobs, etc.) that create pods. The code to handle other workloads can be enabled in this [file](./pkg/admissioncontroller/workloads/workloads.go).
+> The current implementation of his solution validates Pods and Deployments, but does not act on other workloads (DaemonSet, Jobs, etc.) that create pods. The code to handle other workloads can be enabled in this [file](https://github.com/aws-samples/k8s-notary-admission/blob/main/controller/pkg/admissioncontroller/workloads/workloads.go).
 
 ## Operation
 
