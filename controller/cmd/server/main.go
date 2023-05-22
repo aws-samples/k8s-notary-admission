@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"golang.org/x/exp/maps"
 	"notary-admission/pkg/admissioncontroller/verifier"
 	"notary-admission/pkg/handlers"
 	log "notary-admission/pkg/logging"
@@ -102,6 +103,10 @@ func main() {
 		if err != nil {
 			panic("could not load pre-auth registries")
 		}
+	}
+
+	if len(model.BypassRegistries) > 0 {
+		log.Log.Infof("Bypassed registries: %v", maps.Keys(model.BypassRegistries))
 	}
 
 	// Check/upsert XDG_CONFIG_HOME ENV variable

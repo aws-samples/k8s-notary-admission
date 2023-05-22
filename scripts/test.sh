@@ -13,8 +13,8 @@ pushd "${TEST_DIR}"
 
 ${KUBECTL} apply -f .
 
-sleep 5
+# sleep 5
 
-${KUBECTL} -n admission-test get deployment test-bad -o=jsonpath='{.status}'
+# ${KUBECTL} delete -f .
 
 popd

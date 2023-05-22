@@ -2,13 +2,25 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: notary-admit
-  namespace: admission-test
+  namespace: test
 spec:
   containers:
-    - name: test-pod
-      image: <IMAGE>
-      imagePullPolicy: Always
-      securityContext:  
+    - name: test-pod-e
+      image: <IMAGE_URL>
+      imagePullPolicy: &imagePullPolicy Always
+      securityContext:
+        allowPrivilegeEscalation: false  
+        runAsUser: 1000  
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        capabilities:
+          drop: ["ALL"]  
+        seccompProfile:
+          type: "RuntimeDefault"
+    - name: test-pod-w
+      image: <IMAGE_URL>
+      imagePullPolicy: *imagePullPolicy
+      securityContext:
         allowPrivilegeEscalation: false  
         runAsUser: 1000  
         readOnlyRootFilesystem: true

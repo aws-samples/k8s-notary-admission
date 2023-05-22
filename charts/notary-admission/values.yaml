@@ -1,28 +1,28 @@
 deployment:
-  initImage: <ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/notary-admission-init:<TAG>
-  serverImage: <ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com/notary-admission:<TAG>
+  initImage: <INIT_IMAGE_URL>
+  serverImage: <CONTROLLER_IMAGE_URL>
   pullPolicy: Always
   resources:
     limits:
-      cpu: 0.5
+      cpu: 1.0
       memory: 512Mi
     requests:
-      cpu: 0.5
+      cpu: 1.0
       memory: 512Mi
-  replicas: 3
+  replicas: 1
   readiness:
     httpGet:
       path: /healthz
       scheme: HTTP
       port: 8080
-    initialDelaySeconds: 5
+    initialDelaySeconds: 10
     periodSeconds: 10
   liveness:
     httpGet:
       path: /healthz
       scheme: HTTP
       port: 8080
-    initialDelaySeconds: 5
+    initialDelaySeconds: 10
     periodSeconds: 10
   securityContext:  
     allowPrivilegeEscalation: false  
@@ -63,12 +63,12 @@ server:
   endpoints:
     metrics: "/metrics"
     health: "/healthz"
-    podValidation: "/validate/pods"
+    validation: &validateUrl "/validate"
 
 serviceAccount:
   name: notary-admission
   create: false
-  awsRoleArn: ""
+  awsRoleArn: "arn:aws:iam::<AWS_ACCOUNT_ID>:role/<IAM_ROLE_NAME>"
 
 notation:
   mode: binary 
@@ -96,13 +96,13 @@ notation:
       file: "trustpolicy.json"
       aws:
         signer:
-          profileArns: ["arn:aws:signer:<REGION>:<ACCOUNT>:/signing-profiles/notary_admission"]
+          profileArns: ["arn:aws:signer:<AWS_REGION>:<AWS_ACCOUNT_ID>:/signing-profiles/notary_admission"]
           debugEnabled: false
           endpoint: 
     store:
       name: aws-signer-ts
       signingAuthorities: ["signingAuthority:aws-signer-ts"]
-      rootCert: "/signer/signer-pre-prod-root.pem"
+      rootCert: "/signer/aws-signer-notation-root.cert"
 
 prometheus:
   name: notary_admission
@@ -116,12 +116,19 @@ ecr:
     apiOverride:
       endpoint:
       partition:
-      region:
+      region: 
     credentialCache:
       enabled: true
-      preAuthRegistries: ["<ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com","<ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com"]
+      preAuthRegistries: ["<AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com","<AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com"]
       cacheRefreshInterval: 300
       cacheTimeoutInterval: 600
+  ignoreRegistries: ["public.ecr.aws","gcr.io","k8s.gcr.io","registry.k8s.io"]
 
 admission:
   failurePolicy: Fail
+  endpointUrl: *validateUrl
+  operations: ["CREATE","UPDATE"]
+  resources: ["deployments","pods"]
+  apiVersions: ["v1"]
+  reviewVersions: ["v1"]
+

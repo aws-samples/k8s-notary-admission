@@ -7,31 +7,17 @@ FROM --platform=$BUILD_PLATFORM $BUILDER_IMAGE as builder
 WORKDIR /
 COPY . ./
 
-# # Get notation binary
-# ARG NOTATION_LINK="https://github.com/notaryproject/notation/releases/download/v1.0.0-rc.1.dev.20230212/notation_1.0.0-rc.1.dev.20230212_linux_amd64.tar.gz"
-# ARG NOTATION_FILE="notation_1.0.0-rc.1.dev.20230212_linux_amd64.tar.gz"
-# RUN wget -O ${NOTATION_FILE}.tar.gz ${NOTATION_LINK} \
-#  && tar -xzf ${NOTATION_FILE}.tar.gz \
-#  && rm ${NOTATION_FILE}.tar.gz
-
 # Disable default GOPROXY
 RUN go env -w GOPROXY=direct
 # Build Go binary
 RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o main ./cmd/server/main.go
 
-# FROM $BASE_IMAGE
-# FROM alpine:3.17.1
-# RUN apk add gcompat tree
-# FROM gcr.io/distroless/static-debian11
-# FROM public.ecr.aws/amazonlinux/amazonlinux:2022
-# FROM 207726343182.dkr.ecr.us-east-2.amazonaws.com/amazon-linux:2022
 FROM amd64/amazonlinux:2.0.20230207.0
 RUN yum install tree -y
 WORKDIR /
 
 # Notation home
-ENV XDG_CONFIG_HOME=/verify
-# COPY --from=builder notation notation
+ENV XDG_CONFIG_HOME=/verify GOMAXPROCS=2
 COPY --from=builder main main
 EXPOSE 8443
 ENTRYPOINT ["/main"]

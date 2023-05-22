@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	Session    = "IRSA_CREDS_SESSION"
-	EcrPattern = "<ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com"
+	Session         = "IRSA_CREDS_SESSION"
+	EcrPattern      = "<ACCOUNT>.dkr.ecr.<REGION>.amazonaws.com"
+	MsgVerifyBypass = "image verification bypassed"
 )
 
 var lock = &sync.Mutex{}
@@ -46,32 +47,6 @@ func (e EcrAuthToken) BasicAuthCreds() ([]string, error) {
 
 	return strings.Split(string(rawDecodedToken), ":"), nil
 }
-
-// Enabled checks for non-empty AWS IAM creds
-//func (e EcrAuthToken) Enabled() bool {
-//	creds, err := e.BasicAuthCreds()
-//	if creds == nil || err != nil {
-//		log.Log.Errorf("error getting basic ECR creds: %v", err)
-//		return false
-//	}
-//
-//	if len(creds) < 2 {
-//		log.Log.Error("basic ECR creds array had incorrect length")
-//		return false
-//	}
-//
-//	if creds[0] == "" || creds[1] == "" {
-//		log.Log.Error("basic ECR creds were empty")
-//		return false
-//	}
-//
-//	if e.AuthData.ExpiresAt == nil {
-//		log.Log.Error("basic ECR expiry was nil")
-//		return false
-//	}
-//
-//	return true
-//}
 
 type EcrVerifier struct {
 	Tokens map[string]EcrAuthToken
@@ -218,6 +193,8 @@ type Response struct {
 	Error        error
 	Message      string
 	Image        string
+	ByPassed     bool
+	Warning      string
 }
 
 type Verification struct {
@@ -227,15 +204,22 @@ type Verification struct {
 }
 
 // VerifySubjects verifies images (subjects)
-// func (e *EcrVerifier) VerifySubjects(s Subjects) Verification {
 func (e *EcrVerifier) VerifySubjects(images []string) Verification {
 	ecrv := GetEcrv()
 	v := Verification{}
 
 	for _, i := range images {
-		//log.Log.Debugf("image = %s", i)
+		response := Response{}
 		registry := utils.RegistryFromImage(i)
-		//log.Log.Debugf("Registry from image = %s", registry)
+		if _, ok := model.BypassRegistries[registry]; ok {
+			// bypass image signature verification
+			log.Log.Infof("image %s verification was bypassed", i)
+			response.Image = i
+			response.ByPassed = true
+			response.Warning = i + " - " + MsgVerifyBypass
+			v.Responses = append(v.Responses, response)
+			continue
+		}
 
 		if _, ok := ecrv.Tokens[registry]; !ok {
 			// Get ECR token for registry
@@ -288,9 +272,7 @@ func (e *EcrVerifier) VerifySubjects(images []string) Verification {
 
 		nc.Execute()
 
-		response := Response{}
 		response.Image = nc.Subject
-		response.Message = nc.Out
 		response.ErrorMessage = nc.Err
 		response.Error = nc.Error
 		v.Responses = append(v.Responses, response)
@@ -299,9 +281,6 @@ func (e *EcrVerifier) VerifySubjects(images []string) Verification {
 			return v
 		}
 	}
-	//else {
-	//	nc.Verify()
-	//}
 
 	return v
 }

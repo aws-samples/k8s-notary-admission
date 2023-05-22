@@ -5,6 +5,7 @@ import (
 	"errors"
 	"gopkg.in/yaml.v3"
 	"notary-admission/pkg/utils"
+	"sort"
 )
 
 //const (
@@ -25,9 +26,9 @@ type Config struct {
 			Https string `yaml:"https"`
 		} `yaml:"ports"`
 		Endpoints struct {
-			Health        string `yaml:"health"`
-			Metrics       string `yaml:"metrics"`
-			PodValidation string `yaml:"podValidation"`
+			Health     string `yaml:"health"`
+			Metrics    string `yaml:"metrics"`
+			Validation string `yaml:"validation"`
 		} `yaml:"endpoints"`
 		TLS struct {
 			CertFile string `yaml:"crtFile"`
@@ -41,6 +42,7 @@ type Config struct {
 			CacheRefreshInterval int      `yaml:"cacheRefreshInterval"`
 			CacheTimeoutInterval int      `yaml:"cacheTimeoutInterval"`
 		} `yaml:"credentialCache"`
+		IgnoreRegistries []string `yaml:"ignoreRegistries"`
 	} `yaml:"ecr"`
 	Notation struct {
 		Mode           string `yaml:"mode"`
@@ -95,10 +97,11 @@ type TrustPolicyModel struct {
 }
 
 var (
-	ServerConfig    Config
-	ConfigFile      string
-	TrustPolicyFile string
-	TrustPolicy     TrustPolicyModel
+	ServerConfig     Config
+	ConfigFile       string
+	TrustPolicyFile  string
+	TrustPolicy      TrustPolicyModel
+	BypassRegistries map[string]string
 )
 
 // Yaml marshals config for YAML output
@@ -136,6 +139,12 @@ func (c *Config) LoadConfig(configFile string) error {
 	err = yaml.Unmarshal(bytes, &c)
 	if err != nil {
 		return err
+	}
+
+	sort.Strings(c.Ecr.IgnoreRegistries)
+	BypassRegistries = make(map[string]string)
+	for _, s := range c.Ecr.IgnoreRegistries {
+		BypassRegistries[s] = s
 	}
 
 	return nil

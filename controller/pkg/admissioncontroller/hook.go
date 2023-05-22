@@ -7,8 +7,9 @@ import (
 
 // Result contains the result of an admission request
 type Result struct {
-	Allowed bool
-	Msg     string
+	Allowed  bool
+	Msg      string
+	Warnings []string
 }
 
 // AdmitFunc defines how to process an admission request

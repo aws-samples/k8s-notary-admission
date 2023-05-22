@@ -5,7 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http"
-	"notary-admission/pkg/admissioncontroller/pods"
+	"notary-admission/pkg/admissioncontroller/workloads"
 	"notary-admission/pkg/metrics"
 	"notary-admission/pkg/model"
 )
@@ -17,13 +17,12 @@ func NewTlsServer(port string) *http.Server {
 			model.ServerConfig.Prometheus.Width, model.ServerConfig.Prometheus.Count))
 
 	// Instances hooks
-	podsValidation := pods.NewValidationHook()
-
+	validation := workloads.NewValidationHook()
 	// Routers
 	ah := newAdmissionHandler()
 	mux := http.NewServeMux()
-	mux.Handle(model.ServerConfig.Network.Endpoints.PodValidation,
-		phm.WrapHandler("pod-validator", ah.Serve(podsValidation)))
+	mux.Handle(model.ServerConfig.Network.Endpoints.Validation,
+		phm.WrapHandler("workload-validator", ah.Serve(validation)))
 
 	return &http.Server{
 		Addr:    fmt.Sprintf(":%s", port),

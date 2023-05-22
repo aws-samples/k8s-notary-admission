@@ -1,27 +1,30 @@
 ARG BUILD_PLATFORM="linux/amd64"
 ARG BUILDER_IMAGE="golang:1.19"
-ARG BASE_IMAGE="gcr.io/distroless/static:nonroot"
-
+ARG BASE_IMAGE="gcr.io/distroless/base-debian11"
 FROM --platform=$BUILD_PLATFORM $BUILDER_IMAGE as builder
 
 WORKDIR /
 COPY . ./
 
+RUN apt-get update && apt install unzip
+
 # Get notation binary
-ARG NOTATION_LINK="https://github.com/notaryproject/notation/releases/download/v1.0.0-rc.2/notation_1.0.0-rc.2_linux_amd64.tar.gz"
-ARG NOTATION_FILE="notation_1.0.0-rc.2_linux_amd64.tar.gz"
+ARG NOTATION_LINK="https://github.com/notaryproject/notation/releases/download/v1.0.0-rc.5/notation_1.0.0-rc.5_linux_amd64.tar.gz"
+ARG NOTATION_FILE="notation_1.0.0-rc.4_linux_amd64.tar.gz"
 RUN wget -O ${NOTATION_FILE}.tar.gz ${NOTATION_LINK} \
  && tar -xzf ${NOTATION_FILE}.tar.gz \
  && rm ${NOTATION_FILE}.tar.gz
 
 # Get Signer plugin binary
-ARG SIGNER_BINARY_LINK="http://10.0.2.2:8080/files/signer/plugins/notation-com.amazonaws.signer.notation.plugin_linux_amd64"
-ARG SIGNER_BINARY_FILE="notation-com.amazonaws.signer.notation.plugin_linux_amd64"
-RUN wget -O ${SIGNER_BINARY_FILE} ${SIGNER_BINARY_LINK}
+ARG SIGNER_BINARY_LINK="https://d2hvyiie56hcat.cloudfront.net/linux/amd64/plugin/latest/notation-aws-signer-plugin.zip"
+ARG SIGNER_ZIP_FILE="notation-aws-signer-plugin.zip"
+RUN wget -O ${SIGNER_ZIP_FILE} ${SIGNER_BINARY_LINK}
+ARG SIGNER_BINARY_FILE="notation-com.amazonaws.signer.notation.plugin"
+RUN unzip ${SIGNER_ZIP_FILE}
 
 # Get Signer cert
-ARG SIGNER_CERT_LINK="http://10.0.2.2:8080/files/signer/signer-pre-prod-root.pem"
-ARG SIGNER_CERT_FILE="signer-pre-prod-root.pem"
+ARG SIGNER_CERT_LINK="https://d2hvyiie56hcat.cloudfront.net/aws-signer-notation-root.cert"
+ARG SIGNER_CERT_FILE="aws-signer-notation-root.cert"
 RUN wget -O ${SIGNER_CERT_FILE} ${SIGNER_CERT_LINK}
 
 # Disable default GOPROXY
@@ -37,7 +40,7 @@ WORKDIR /
 ENV XDG_CONFIG_HOME=/verify
 
 COPY --from=builder notation notation
-COPY --from=builder signer-pre-prod-root.pem signer/signer-pre-prod-root.pem
-COPY --from=builder notation-com.amazonaws.signer.notation.plugin_linux_amd64 signer/notation-com.amazonaws.signer.notation.plugin
+COPY --from=builder aws-signer-notation-root.cert signer/aws-signer-notation-root.cert
+COPY --from=builder notation-com.amazonaws.signer.notation.plugin signer/notation-com.amazonaws.signer.notation.plugin
 COPY --from=builder main main
 ENTRYPOINT ["/main"]

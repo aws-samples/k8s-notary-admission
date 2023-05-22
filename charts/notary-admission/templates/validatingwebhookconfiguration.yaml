@@ -11,7 +11,7 @@ metadata:
     env: {{ .Values.labels.env }}
     owner: {{ .Values.labels.owner }}
 webhooks:
-  - name: pods.{{ .Chart.Name }}.aws.com
+  - name: workloads.{{ .Chart.Name }}.aws.com
     failurePolicy: {{ .Values.admission.failurePolicy }}
     namespaceSelector:
       matchExpressions:
@@ -20,16 +20,16 @@ webhooks:
         values:
         - ignore
     rules:
-      - operations: ["CREATE", "UPDATE"]
+      - operations: {{ toYaml .Values.admission.operations | nindent 8 }}
         apiGroups: ["*"]
-        apiVersions: ["v1"]
-        resources: ["pods"]
+        apiVersions: {{ toYaml .Values.admission.apiVersions | nindent 8 }}
+        resources: {{ toYaml .Values.admission.resources | nindent 8 }}
     clientConfig:
       caBundle: {{ .Values.server.tls.secrets.cabundle }}
       service:
         namespace: {{ .Chart.Name }}
         name: {{ .Chart.Name }}
-        path: {{ .Values.server.endpoints.podValidation }}
+        path: {{ .Values.server.endpoints.validation }}
         port: {{ .Values.service.ports.https }}
-    admissionReviewVersions: ["v1"]
+    admissionReviewVersions: {{ toYaml .Values.admission.reviewVersions | nindent 4 }}
     sideEffects: None

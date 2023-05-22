@@ -11,9 +11,27 @@ The approaches used in this project are inspired by the following OSS projects:
 ## Architecture
 ![Architecture Diagram](imgs/na.png "Architecture Diagram")
 
-The solution centers around a custom controller that is written in Go and installed via Helm. The default configuration installs the Validating Webhook Configuration that will forward API server validation calls for all Pod _CREATE_ and _UPDATE_ operations, from any namespace not labeled with the `notary-admission-ignore=ignore` label.
+The solution centers around a custom controller&mdash;written in Go&mdash;installed via Helm. The default configuration installs the Validating Webhook Configuration that will forward API server validation calls for all _CREATE_ and _UPDATE_ operations, for configured Kubernetes kinds, from any namespace not labeled with the `notary-admission-ignore=ignore` label.
 
-> The current implementation of his solution validates Pods and Deployments, but does not act on other workloads (DaemonSet, Jobs, etc.) that create pods. The code to handle other workloads can be enabled in this [file](https://github.com/aws-samples/k8s-notary-admission/blob/main/controller/pkg/admissioncontroller/workloads/workloads.go).
+The current code implementation of his solution can validate the following Kubernetes kinds:
+- Pods
+- Deployments
+- ReplicaSets
+- DaemonsSets
+- CronJobs
+- Jobs
+- StatefulSets
+
+The following container types are validated by this solution:
+- containers
+- init-containers
+- ephemeral-containers
+
+The default webhook settings are set to only validate _Deployments_ and _Pods_.
+
+Other workloads (DaemonSet, Jobs, etc.) that create pods, can be added via the `admission.resources` array element, in the _values.yaml_ file.
+
+> If workloads&mdash;other than Deployments and Pods&mdash;will not be validation targets, then the code&mdash;in `controller/pkg/admissioncontroller/workloads/workloads.go`&mdash;can be tuned to skip those resource cases.
 
 ## Operation
 
@@ -22,7 +40,7 @@ This example solution uses the Notation CLI to verify container image signatures
 The container image built with this solution includes the following Notation and AWS Signer artifacts for operation:
 - Notation CLI binary
 - AWS Signer plugin binary
-- AWS Signer root certificate (*.pem)
+- AWS Signer root certificate
 
 During the startup of this controller, the init container calls the Notation CLI to create the Notation [Trust Store](https://github.com/notaryproject/notaryproject/blob/main/specs/trust-store-trust-policy.md) needed for the verification process. An example Trust Store is seen below.
 
@@ -38,7 +56,7 @@ During the startup of this controller, the init container calls the Notation CLI
         └── x509
             └── signingAuthority
                 └── aws-signer-ts
-                    └── signer-pre-prod-root.pem
+                    └── aws-signer-notation-root.crt
 ```
 
 The [Trust Policy](https://github.com/notaryproject/notaryproject/blob/main/specs/trust-store-trust-policy.md), seen in the above tree output, is configured via the `trustpolicy.json` file in the root of the `notary-admisson` Helm chart. It is created by the init container. An example of this Trust Policy is seen below.
@@ -69,7 +87,7 @@ The [Trust Policy](https://github.com/notaryproject/notaryproject/blob/main/spec
 
 ### AWS Signer Override
 
-By default, AWS Signer will attempt a key/cert revocation check. To disable this revocation check, the following `signatureVerification` object can be configured in the trust policy JSON.
+By default, AWS Signer will attempt a signing-profile revocation check. To disable this revocation check, the following `signatureVerification` object can be configured in the trust policy JSON.
 
 ```json
 "signatureVerification": {
@@ -117,17 +135,21 @@ ecr:
 
 > The Amazon ECR auth tokens are relative to the AWS account in which the Amazon EKS cluster is running, and the region in which the images are stored. Accessing Amazon ECR registries in remote accounts may require additional AWS IAM or Amazon ECR repository resource permissions.
 
-The easiest way to add an IAM Service Account is to use the following [eksctl](https://eksctl.io/usage/iamserviceaccounts/?h=) command.
+The easiest way to add an IAM Service Account into an Amazon EKS cluster namespace is to use the following [eksctl](https://eksctl.io/usage/iamserviceaccounts/?h=) command.
 
 ```bash
+CLUSTER=<CLUSTER_NAME>
+ECR_POLICY=arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+SIGNER_POLICY=arn:aws:iam::<AWS_ACCOUNT_ID>:policy/<IAM_POLICY_NAME>
+
 eksctl create iamserviceaccount \
-    --name notary-admission \
-    --namespace notary-admission \
-    --cluster ${CLUSTER} \
-    --attach-policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly \
-    --attach-policy-arn <AWS_SIGNER_POLICY_ARN> \
-    --approve \
-    --override-existing-serviceaccounts
+--name notary-admission \
+--namespace notary-admission \
+--cluster $CLUSTER \
+--attach-policy-arn $ECR_POLICY \
+--attach-policy-arn $SIGNER_POLICY \
+--approve \
+--override-existing-serviceaccounts
 ```
 
 > The Amazon EKS cluster must have an [OIDC provider](https://docs.aws.amazon.com/emr/latest/EMR-on-EKS-DevelopmentGuide/setting-up-enable-IAM.html) configured, in order to use IAM Roles for Service Accounts.
@@ -168,14 +190,14 @@ An example read-only AWS Signer policy is seen below:
 
 The following steps should be followed to sign a container image in Amazon ECR, using the Notation CLI and AWS Signer.
 
-1. [Install the Notation CLI](https://notaryproject.dev/docs/installation/cli/)
+1. Install the Notation CLI with AWS Signer root certificate and AWS Signer plugin. This can be accomplished by using the URLs found in the [CloudFront URL doc](docs/cloudfront-urls.md).
 
 2. Create an AWS Signer profile
 
 ```bash
 aws signer put-signing-profile \
     --profile-name <SIGNING_PROFILE_NAME> \
-    --platform-id Notary-v2-OCI-SHA384-ECDSA \
+    --platform-id Notation-OCI-SHA384-ECDSA \
     --signature-validity-period 'value=12, type=MONTHS'
 {
     "arn": "arn:aws:signer:<AWS_REGION>:<AWS_ACCOUNT_ID>:/signing-profiles/<SIGNING_PROFILE_NAME>",
@@ -184,34 +206,29 @@ aws signer put-signing-profile \
 }
 ```
 
-3. Install AWS Signer plugin for Notation. On an M1 Mac the plugin is installed at:
-
-```bash
-/Users/<USER>/Library/Application Support/notation/plugins/com.amazonaws.signer.notation.plugin/notation-com.amazonaws.signer.notation.plugin
-```
-
-4. Add a signing key, referencing the AWS Signer profile (created above) and the AWS Signer plugin.
+3. Add a signing key, referencing the AWS Signer profile (created above) and the AWS Signer plugin.
 
 ```bash
 notation key add \
     --id arn:aws:signer:<AWS_REGION>:<AWS_ACCOUNT_ID>:/signing-profiles/<SIGNING_PROFILE_NAME> \
     --plugin com.amazonaws.signer.notation.plugin \
     <SIGNING_KEY_NAME>
-<SIGNING_KEY_NAME>
 ```
 
-5. Add the AWS Signer root PEM
+4. Login to Amazon ECR
 
-```bash
-notation certificate add --type signingAuthority --store aws-signer-ts signer-pre-prod-root.pem
+```
+aws ecr get-login-password | notation login \
+--username AWS \
+--password-stdin <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com
 ```
 
-6. Sign an existing Amazon ECR container image
+5. Sign an existing Amazon ECR container image
 
 ```bash
 notation sign \
     <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/<IMAGE_REPOSITORY>:<IMAGE_TAG> \
-    --key <SIGNING_KEY_NAME> --signature-manifest image
+    --key <SIGNING_KEY_NAME>
 ```
 
 6. Verify a signed image
@@ -259,7 +276,7 @@ extendedKeyUsage = clientAuth, serverAuth
 subjectAltName = DNS:notary-admission.notary-admission.svc,DNS:notary-admission.notary-admission.svc.cluster,DNS:notary-admission.notary-admission.svc.cluster.local
 ```
 
-3. Update _charts/notary-admission/values.yaml_ with new controller image.
+3. Update _charts/notary-admission/values.yaml_ with new controller images.
 
 ```
 deployment:
@@ -314,7 +331,7 @@ The tests were setup to validate 1000 pods. As a point of reference, without val
 
 #### 3 Replicas
 
-- CPU settings: 0.5
+- CPU settings: 1.0
 - Memory settings: 512mi
 - Time to validate 1000 pods: 54.68sec 
 - Average Peak CPU: 0.138
@@ -322,7 +339,7 @@ The tests were setup to validate 1000 pods. As a point of reference, without val
 
 #### 5 Replicas
 
-- CPU settings: 0.5
+- CPU settings: 1.0
 - Memory settings: 512mi
 - Time to validate 1000 pods: 54.03sec 
 - Average Peak CPU: 0.08

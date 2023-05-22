@@ -84,10 +84,12 @@ func (h *admissionHandler) Serve(hook admissioncontroller.Hook) http.HandlerFunc
 				Kind:       AdmissionReviewKind,
 				APIVersion: AdmissionReviewVersion,
 			},
+			Request: nil,
 			Response: &v1.AdmissionResponse{
-				UID:     review.Request.UID,
-				Allowed: result.Allowed,
-				Result:  &meta.Status{Message: result.Msg},
+				UID:      review.Request.UID,
+				Allowed:  result.Allowed,
+				Result:   &meta.Status{Message: result.Msg},
+				Warnings: result.Warnings,
 			},
 		}
 

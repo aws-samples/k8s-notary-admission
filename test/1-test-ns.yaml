@@ -1,11 +1,12 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: admission-test
+  name: test
   labels:
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/warn: restricted
+    # notary-admission-ignore: ignore
     app: admission-test
     billing: lob-cc
     env: dev

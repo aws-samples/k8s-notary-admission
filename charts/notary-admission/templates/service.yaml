@@ -11,11 +11,18 @@ metadata:
     billing: {{ .Values.labels.billing }}
     env: {{ .Values.labels.env }}
     owner: {{ .Values.labels.owner }}
+  annotations:
+    prometheus.io/port: "{{ .Values.server.ports.http }}"
+    prometheus.io/scrape: "{{ .Values.prometheus.scrape }}"
 spec:
   selector:
     app: {{ .Chart.Name }}
   ports:
   - name: https
     protocol: TCP
-    port: {{ .Values.service.port }}
-    targetPort: {{ .Values.server.port }}
+    port: {{ .Values.service.ports.https }}
+    targetPort: {{ .Values.server.ports.https }}
+  - name: http
+    protocol: TCP
+    port: {{ .Values.service.ports.http }}
+    targetPort: {{ .Values.server.ports.http }}

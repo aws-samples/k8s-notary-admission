@@ -25,7 +25,7 @@ data:
       endpoints: 
         metrics: "{{ .Values.server.endpoints.metrics }}"  
         health: "{{ .Values.server.endpoints.health }}"
-        podValidation: "{{ .Values.server.endpoints.podValidation }}"
+        validation: "{{ .Values.server.endpoints.validation }}"
       tls:
         keyFile: "{{ .Values.server.tls.secrets.keyFile }}"
         crtFile: "{{ .Values.server.tls.secrets.crtFile }}"
@@ -35,6 +35,7 @@ data:
         preAuthRegistries: {{ toYaml .Values.ecr.auth.credentialCache.preAuthRegistries | nindent 10 }}
         cacheRefreshInterval: {{ .Values.ecr.auth.credentialCache.cacheRefreshInterval }}
         cacheTimeoutInterval: {{ .Values.ecr.auth.credentialCache.cacheTimeoutInterval }}
+      ignoreRegistries: {{ toYaml .Values.ecr.ignoreRegistries | nindent 8 }}
     notation:
       mode: {{ .Values.notation.mode }}
       debugEnabled: {{ .Values.notation.debug.enabled }}

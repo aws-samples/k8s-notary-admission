@@ -2,10 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test
-  namespace: admission-test
+  namespace: test
   labels:
     app: test
     owner: jimmy
+    canremove: "true"
 spec:
   selector:
     matchLabels:
@@ -25,7 +26,7 @@ spec:
     spec: 
       containers:
       - name: test
-        image: <IMAGE>
+        image: <IMAGE_URL>
         imagePullPolicy: Always
         securityContext:  
           allowPrivilegeEscalation: false  
@@ -36,29 +37,5 @@ spec:
             drop: ["ALL"]  
           seccompProfile:
             type: "RuntimeDefault" 
-        ports:
-        - containerPort: 8080
-        resources:  
-          limits:  
-            cpu: 200m  
-            memory: 20Mi  
-          requests:  
-            cpu: 100m  
-            memory: 10Mi  
-        readinessProbe:
-          tcpSocket:
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        livenessProbe:
-          tcpSocket:
-            port: 8080
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        volumeMounts:
-          - mountPath: /tmp
-            name: tmp
-      volumes:
-      - name: tmp
-        emptyDir: {}
+ 
 

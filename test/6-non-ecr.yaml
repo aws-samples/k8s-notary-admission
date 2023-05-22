@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: notary-admit-bad
+  name: notary-admit-non-ecr
   namespace: test
 spec:
   containers:
-    - name: test-pod-bad
-      image: <IMAGE_URL>
-      imagePullPolicy: Always
-      securityContext:  
+    - name: test-pod-gcrio
+      image: registry.k8s.io/pause:3.1
+      imagePullPolicy: &imagePullPolicy Always
+      securityContext:
         allowPrivilegeEscalation: false  
         runAsUser: 1000  
         readOnlyRootFilesystem: true
@@ -17,3 +17,4 @@ spec:
           drop: ["ALL"]  
         seccompProfile:
           type: "RuntimeDefault"
+

@@ -7,15 +7,14 @@ catch() {
 
 service_account () {
   eksctl delete iamserviceaccount \
-      --name notary-admission \
-      --namespace notary-admission \
-      --cluster ${CLUSTER} 
+    --name notary-admission \
+    --namespace notary-admission \
+    --cluster $1
 }
 
 CLUSTER=${1:-notary-admission}
-KUBECTL="kubectl"
 
-# set -x
+KUBECTL="kubectl"
 
 helm uninstall notary-admission --namespace notary-admission
 
@@ -25,7 +24,7 @@ ${KUBECTL} -n notary-admission delete pod notary-admission-test-connection
 
 read -p "Do you wish to delete the service account? " yn
 case $yn in
-    [Yy]* ) service_account
+    [Yy]* ) service_account ${CLUSTER}
 esac
 
 read -p "Do you wish to delete the namespace? " yn

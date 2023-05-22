@@ -1,0 +1,13 @@
+
+Chart version: {{ .Chart.Version }}
+{{ .Chart.Name }} version: {{ default .Chart.AppVersion }}
+Controller replica count: {{ .Values.deployment.replicas }}
+
+Thank you for installing {{ .Chart.Name }}! Your release is named {{ .Release.Name }}.
+
+{{ if not .Values.deployment.replicas }}
+⚠️  WARNING: Setting replicas count below 3 is not recommended in busy clusters.
+{{- else if lt (int .Values.deployment.replicas) 3 }}
+⚠️  WARNING: Setting replicas count below 3 is not recommended in busy clusters.
+{{- end }}
+
