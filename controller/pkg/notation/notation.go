@@ -2,28 +2,16 @@ package notation
 
 import (
 	"bytes"
-	"context"
 	"fmt"
-	"github.com/notaryproject/notation-go"
-	_ "github.com/notaryproject/notation-go"
-	"github.com/notaryproject/notation-go/dir"
-	"github.com/notaryproject/notation-go/registry"
-	"github.com/notaryproject/notation-go/verifier"
-	_ "github.com/notaryproject/notation-go/verifier"
-	"github.com/notaryproject/notation-go/verifier/trustpolicy"
-	_ "github.com/notaryproject/notation-go/verifier/trustpolicy"
-	"github.com/notaryproject/notation-go/verifier/truststore"
-	_ "github.com/notaryproject/notation-go/verifier/truststore"
-	log "notary-admission/pkg/logging"
-	"notary-admission/pkg/model"
-	"oras.land/oras-go/v2/registry/remote"
 	"os"
 	"os/exec"
+
+	log "notary-admission/pkg/logging"
+	"notary-admission/pkg/model"
 )
 
 const (
 	ValidationFailed = "notation validation failed"
-	ValidationPassed = "notation validation passed"
 )
 
 //var lock = &sync.Mutex{}
@@ -70,84 +58,4 @@ func (nc *Command) Execute() {
 	nc.Err = stderr.String()
 	nc.Error = err
 	return
-}
-
-func (nc *Command) Verify() {
-	tpd := trustPolicyDoc()
-
-	imageVerifier, err := verifier.New(&tpd, truststore.NewX509TrustStore(dir.ConfigFS()), nil)
-	if err != nil {
-		nc.Err = ValidationFailed
-		nc.Error = err
-		return
-	}
-
-	remoteRepo, err := remote.NewRepository(nc.Subject)
-	if err != nil {
-		nc.Err = ValidationFailed
-		nc.Error = err
-		return
-	}
-
-	repo := registry.NewRepository(remoteRepo)
-
-	// exampleRemoteVerifyOptions is an example of notation.RemoteVerifyOptions.
-	exampleRemoteVerifyOptions := notation.RemoteVerifyOptions{
-		ArtifactReference:    nc.Subject,
-		PluginConfig:         nil,
-		MaxSignatureAttempts: 50,
-		UserMetadata:         nil,
-	}
-
-	// remote verify core process
-	// upon successful verification, the target OCI artifact manifest descriptor
-	// and signature verification outcome are returned.
-	desc, _, err := notation.Verify(context.Background(), imageVerifier, repo, exampleRemoteVerifyOptions)
-	if err != nil {
-		nc.Err = ValidationFailed
-		nc.Error = err
-		return
-	}
-
-	nc.Out = ValidationPassed
-	log.Log.Debugf("MediaType: %s", desc.MediaType)
-	log.Log.Debugf("Digest: %+v", desc.Digest)
-	log.Log.Debugf("Size: %d", desc.Size)
-
-	return
-}
-
-func trustPolicyDoc() trustpolicy.Document {
-	tpd := trustpolicy.Document{
-		Version: "1.0",
-	}
-
-	tpm := model.TrustPolicy
-	var tpa []trustpolicy.TrustPolicy
-	for _, p := range tpm.TrustPolicies {
-		sv := trustpolicy.SignatureVerification{
-			VerificationLevel: p.SignatureVerification.Level,
-			Override:          nil,
-		}
-
-		if p.SignatureVerification.Override.Revocation != "" {
-			va := make(map[trustpolicy.ValidationType]trustpolicy.ValidationAction)
-			va[("revocation")] = trustpolicy.ValidationAction(p.SignatureVerification.Override.Revocation)
-			sv.Override = va
-		}
-
-		tp := trustpolicy.TrustPolicy{
-			Name:                  p.Name,
-			RegistryScopes:        p.RegistryScopes,
-			SignatureVerification: sv,
-			TrustStores:           p.TrustStores,
-			TrustedIdentities:     p.TrustedIdentities,
-		}
-
-		tpa = append(tpa, tp)
-	}
-
-	tpd.TrustPolicies = tpa
-
-	return tpd
 }
