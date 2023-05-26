@@ -9,8 +9,8 @@ COPY . ./
 RUN apt-get update && apt install unzip
 
 # Get notation binary
-ARG NOTATION_LINK="https://github.com/notaryproject/notation/releases/download/v1.0.0-rc.5/notation_1.0.0-rc.5_linux_amd64.tar.gz"
-ARG NOTATION_FILE="notation_1.0.0-rc.5_linux_amd64.tar.gz"
+ARG NOTATION_LINK="https://github.com/notaryproject/notation/releases/download/v1.0.0-rc.7/notation_1.0.0-rc.7_linux_amd64.tar.gz"
+ARG NOTATION_FILE="notation_1.0.0-rc.7_linux_amd64.tar.gz"
 RUN wget -O ${NOTATION_FILE}.tar.gz ${NOTATION_LINK} \
  && tar -xzf ${NOTATION_FILE}.tar.gz \
  && rm ${NOTATION_FILE}.tar.gz
